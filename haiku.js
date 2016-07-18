@@ -1,52 +1,43 @@
 var fs = require('fs');
-
-
-//CREATE SYLLABLE REFERENCE ARRAY
-
-function makeSyllablesArray(file){
-	var lines = formatData(file);
-	var syllablesArray = [];
-
-	//split each line to word and phoneme components
-	lines.forEach(function(line){
-    	var lineSplit = line.split("  ");
-    	var word = lineSplit[0];
-    	var phonemes = lineSplit[1];
-
-    	//do a string match on the phonemes to catch digits
-		//count the length of the resulting list to get sylable count
-    	if(phonemes.match(/\d/g)){
-    		var syllableCount = phonemes.match(/\d/g).length;
-
-    		//push word into syllablesArray at index matching sylable count
-			//IF syllablesArray[i] is undefined, create new array with word in it at index, 
-    		if(syllablesArray[syllableCount] === undefined){
-    			syllablesArray[syllableCount] = [word];
-    		} else {
-    			syllablesArray[syllableCount].push(word);
-    		}
-    	}
-    });
-    return syllablesArray;
-}
-
-function formatData(file){
-	//convert binary data to text string
-	var data = fs.readFileSync(file).toString();
-
-	//split text into array of lines
-	return data.toString().split("\n");
-}
-
+var haikuPattern = require('./haiku-pattern');
 
 //GENERATE HAIKU
-function createHaiku(pattern, syllablesArray, text) {
+
+function createHaiku(pattern, dictionary, textFile) {
+	if(pattern === undefined){
+		pattern = haikuPattern();
+	}
+
+	if(textFile === undefined){
+		return haikuFromDict(pattern, dictionary);
+	} else {
+		return haikuFromText(pattern, dictionary, textFile);
+	}
+}
+
+function haikuFromText(pattern, dictionary, textFile){
+	var text = formatText(textFile);
+
+	var syllMatch = convertToSyllables(text, dictionary);
+	var pattern = pattern.replace(/,/g, '');
+
+	var regEx = new RegExp(pattern);
+	var match = regEx.exec(syllMatch);
+
+	var haiku = text.slice(match.index, (pattern.length + 1));
+
+	return haiku.join(" ");
+}
+
+function haikuFromDict(pattern, dictionary){
+	pattern = formatPattern(pattern);
+
 	var haiku = [];
 
 	pattern.forEach(function(array){
 		var line = [];
 		array.forEach(function(num){
-			line.push(findWord(num, syllablesArray));
+			line.push(findWord(num, dictionary));
 		});
 		haiku.push(line.join(' '));
 	});
@@ -54,17 +45,54 @@ function createHaiku(pattern, syllablesArray, text) {
 	return haiku.join('\n');
 }
 
-function findWord(num, syllablesArray){
+function formatText(file){
+	var text = fs.readFileSync(file).toString();
+	text = text.replace(/\s+/g, ' ').replace(/[^a-z ]+|^ | $/gi, '');
+	text = text.split(/ +/);
+	return text;
+}
+
+function convertToSyllables(file, dictionary){
+	var textArray = formatText(file);
+
+	var syllMatch = '';
+
+	for(var i = 0; i < textArray.length; i++){
+		var word = textArray[i].toUpperCase();
+		var firstLetter = word.charAt(0);
+		if(dictionary[firstLetter][word] === undefined){
+			syllMatch += 0;
+		} else {
+			syllMatch += dictionary[firstLetter][word];
+		}
+	}
+	return syllMatch;
+}
+
+function findWord(num, dictionary){
 	//use number to find index of the words list with that syllable count
-	var wordList = syllablesArray[num];
+	var wordList = dictionary[num];
 
 	//find length of word list, use it to generate random index number 
 	var randomWord = wordList[Math.floor(Math.random() * wordList.length)];
-
+	
 	return randomWord;
 }
 
-module.exports = {createHaiku: createHaiku, makeSyllablesArray: makeSyllablesArray};
+function formatPattern(string){
+	var array = string.split(',');
+	array = array.map(function(nums){
+		return nums.split('');
+	});
+	array.forEach(function(subArray, i, arr){
+		arr[i] = subArray.map(function(num){
+			return Number(num);
+		});
+	});
+	return array;
+}
+
+module.exports = createHaiku;
 
 
 
