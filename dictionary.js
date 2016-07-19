@@ -1,23 +1,27 @@
+//MODULES
+//**************************************
 var fs = require('fs');
 
-function formatData(file){
-	//convert binary data to text string
-	var data = fs.readFileSync(file).toString();
 
+//FUNCTIONS FOR BUILDING WORD REFERENCE
+//**************************************
+
+function formatData(file){
+	var data = fs.readFileSync(file).toString();
 	//split text into array of lines
 	var lines = data.toString().split("\n");
-
 	//split each line to word and phoneme components
 	lines = lines.map(function(line){
 		var line = line.split("  ");
-
 		//REMOVE the (num) found after some words 
 		line[0] = line[0].replace(/\(\d+\)/, '')
 		return line;
 	});
-
 	return lines;
 }
+
+
+//will build an array if no reference text, object if pulling from reference text
 
 function createDictionary(file, text){
 	var wordRef = formatData(file);
@@ -66,4 +70,6 @@ function makeSyllableArray(word, syllableCount, array){
     return array;
 }
 
+//EXPORTS
+//**************************************
 module.exports = createDictionary;

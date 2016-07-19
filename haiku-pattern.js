@@ -1,3 +1,6 @@
+//FUNCTIONS FOR GENERATING AND FORMATTING HAIKU PATTERNS
+//**************************************
+
 function makePattern(syll){
 	var array = [];
 
@@ -26,4 +29,20 @@ function haikuPattern(){
 	return string;
 }
 
-module.exports = haikuPattern;
+function formatPattern(string){
+	var array = string.split(',');
+	array = array.map(function(nums){
+		return nums.split('');
+	});
+	array.forEach(function(subArray, i, arr){
+		arr[i] = subArray.map(function(num){
+			return Number(num);
+		});
+	});
+	return array;
+}
+
+//EXPORTS
+//**************************************
+exports.haikuPattern = haikuPattern;
+exports.formatPattern = formatPattern;

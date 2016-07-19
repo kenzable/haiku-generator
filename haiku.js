@@ -1,43 +1,53 @@
+//MODULES
+//**************************************
 var fs = require('fs');
-var haikuPattern = require('./haiku-pattern');
+var pat = require('./haiku-pattern');
 
-//GENERATE HAIKU
 
-function createHaiku(pattern, dictionary, textFile) {
-	if(pattern === undefined){
-		pattern = haikuPattern();
+//HAIKU-BUILDING FUNCTIONS
+//**************************************
+
+function getHaiku(pattern, dictionary, file) {
+	if(pattern === 'generate'){
+		pattern = pat.haikuPattern();
+
+		if(file !== undefined){
+			var haiku;
+			var iterations = 0;
+			while(textSearch(pattern, dictionary, file) === "No haiku found" && iterations < 100000){
+				iterations++;
+				pattern = pat.haikuPattern();
+				haiku = textSearch(pattern, dictionary, file);
+			}
+			return haiku;
+		}
 	}
 
-	if(textFile === undefined){
-		return haikuFromDict(pattern, dictionary);
+	if (file === undefined){
+		return buildHaiku(pattern, dictionary, file);
 	} else {
-		return haikuFromText(pattern, dictionary, textFile);
+		return textSearch(pattern, dictionary, file); 
 	}
 }
 
-function haikuFromText(pattern, dictionary, textFile){
-	var text = formatText(textFile);
-
-	var syllMatch = convertToSyllables(text, dictionary);
-	var pattern = pattern.replace(/,/g, '');
-
-	var regEx = new RegExp(pattern);
-	var match = regEx.exec(syllMatch);
-
-	var haiku = text.slice(match.index, (pattern.length + 1));
-
-	return haiku.join(" ");
-}
-
-function haikuFromDict(pattern, dictionary){
-	pattern = formatPattern(pattern);
+function buildHaiku(pattern, wordList, file){
+	pattern = pat.formatPattern(pattern);
 
 	var haiku = [];
+	var i = 0;
+	var word;
 
 	pattern.forEach(function(array){
 		var line = [];
 		array.forEach(function(num){
-			line.push(findWord(num, dictionary));
+			if(file === undefined){
+				word = randomPick(wordList[num]);
+			} else {
+				word = wordList[i];
+			}
+
+			line.push(word);
+			i++;
 		});
 		haiku.push(line.join(' '));
 	});
@@ -45,16 +55,47 @@ function haikuFromDict(pattern, dictionary){
 	return haiku.join('\n');
 }
 
+function randomPick(array){
+	//get random element in array
+	var random = array[Math.floor(Math.random() * array.length)];
+	
+	return random;
+}
+
+
+//FUNCTIONS SPECIFICALLY FOR TEXT-TO-HAIKU
+//**************************************
+
+function textSearch(pattern, dictionary, file){
+	var text = formatText(file);
+	var syllMatch = convertToSyllables(text, dictionary);
+
+	var strPat = pattern.replace(/,/g, '');
+	var regEx = new RegExp(strPat, "g");
+
+	if(regEx.exec(syllMatch) === null){
+		return "No haiku found";
+	} else {
+		regEx.lastIndex = 0;
+		var matches = [], match, index;
+		while((match = regEx.exec(syllMatch)) !== null) {
+			index = match.index;
+			var haiku = text.slice(index, (index + strPat.length));
+			matches.push(haiku);
+		}
+		var chosen = randomPick(matches);
+		return buildHaiku(pattern, chosen, file);
+	}
+}
+
 function formatText(file){
-	var text = fs.readFileSync(file).toString();
+	var text = fs.readFileSync("./" + file).toString();
 	text = text.replace(/\s+/g, ' ').replace(/[^a-z ]+|^ | $/gi, '');
 	text = text.split(/ +/);
 	return text;
 }
 
-function convertToSyllables(file, dictionary){
-	var textArray = formatText(file);
-
+function convertToSyllables(textArray, dictionary){
 	var syllMatch = '';
 
 	for(var i = 0; i < textArray.length; i++){
@@ -69,33 +110,7 @@ function convertToSyllables(file, dictionary){
 	return syllMatch;
 }
 
-function findWord(num, dictionary){
-	//use number to find index of the words list with that syllable count
-	var wordList = dictionary[num];
 
-	//find length of word list, use it to generate random index number 
-	var randomWord = wordList[Math.floor(Math.random() * wordList.length)];
-	
-	return randomWord;
-}
-
-function formatPattern(string){
-	var array = string.split(',');
-	array = array.map(function(nums){
-		return nums.split('');
-	});
-	array.forEach(function(subArray, i, arr){
-		arr[i] = subArray.map(function(num){
-			return Number(num);
-		});
-	});
-	return array;
-}
-
-module.exports = createHaiku;
-
-
-
-
-
-
+//EXPORTS
+//**************************************
+module.exports = getHaiku;
